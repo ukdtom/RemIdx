@@ -1,13 +1,26 @@
 [
 	{
-		"id": "Remote_Idx",
+		"id": "Remote_Idx_IP",
 		"label": "Remote Indexer IP address or DNS name",
 		"type": "text",
+		"default": "127.0.0.1"
 	},
 	{
 		"id": "Remote_Port",
 		"label": "Port number of remote indexer",
 		"type": "text",
 		"default": "32405"
+	},
+	{
+		"id": "This_PMS_IP",
+		"label": "Local IP Address of this PMS",
+		"type": "text",
+		"default": "127.0.0.1"
+	},
+	{
+		"id": "This_PMS_Port",
+		"label": "Local port of this PMS",
+		"type": "text",
+		"default": "32400"
 	}
 ]

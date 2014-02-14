@@ -1,6 +1,14 @@
-import datetime, re, time, unicodedata, hashlib, urlparse, types, urllib
-import shutil
-import sys
+#import datetime
+#import re
+#import time
+#import unicodedata
+#import hashlib 
+
+#import urlparse
+#import types 
+#import urllib
+#import shutil
+#import sys
 import os
 #import inspect
 
@@ -54,15 +62,14 @@ class RemIdxMediaTV(Agent.TV_Shows):
 				for e in media.seasons[s].episodes:
 					for i in media.seasons[s].episodes[e].items:
 						for part in i.parts:
-#							CheckIdx(part, myMetaDataId, myTitle)
-							print 'Tommy ged'
+							print 'Tommy Missing TV part'
 
 ####################################################################################################
 # GetMediaInfo will grap some info for a media, and decide if futher action is needed
 ####################################################################################################		
 @route(PREFIX + '/GetMediaInfo')
 def GetMediaInfo(mediaID, myTitle):
-	Log.Debug('Checking media with an ID of : %s' %(mediaID)) 
+	Log.Debug('Checking media with an ID of : %s, and a title of : %s' %(mediaID, myTitle)) 
 	#Get the hash
 	myNewURL = myURL + '/library/metadata/' + mediaID + '/tree'
 	sections = XML.ElementFromURL(myNewURL).xpath('//MediaPart')
@@ -88,19 +95,24 @@ def GetMediaInfo(mediaID, myTitle):
 		#Get streaming info
 		sections = XML.ElementFromURL(myNewURL).xpath('//Part')
 		for section in sections:
-			mySURL =  myURL + section.get('key')
-		print 'Stream URL is: %s' %(mySURL)
-		print 'Hash : ' + myMediaHash
-		print 'Width : ' + myWidth
-		print 'Height : ' + myHeight
+			mySURL =  section.get('key')
+		RegIdx(mySURL, myMediaHash, myWidth, myHeight)
+
 
 ####################################################################################################
 # ReqIdx will request an index from the remote indexer
 ####################################################################################################		
 @route(PREFIX + '/ReqIdx')
-def ReqIdx(mediaID, myTitle):
-	return
+def RegIdx(mySURL, myMediaHash, myWidth, myHeight):
+	myURL = 'http://' + Prefs['Remote_Idx_IP'] + ':' + Prefs['Remote_Port']+'/index?hash=' + myMediaHash + '&Stream=http://' + Prefs['This_PMS_IP'] + ':' + Prefs['This_PMS_Port'] + mySURL + '&Height=' + myHeight + '&Width=' + myWidth
+	print myURL
+	print 'Tommy Need to send request to remote PC'
 
+####################################################################################################
+# Validate preferences
+####################################################################################################
+def ValidatePrefs():
+	return
 
   
   
