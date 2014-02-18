@@ -1,0 +1,2 @@
+python RemIdx.py
+
