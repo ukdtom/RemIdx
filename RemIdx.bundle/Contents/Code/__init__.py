@@ -12,16 +12,27 @@
 import os
 #import inspect
 
-VERSION = ' V0.0.0.1'
-NAME = L('RemIdx')
-PREFIX = '/metadata/remidx'
+import urllib2
+import urllib
 
-myURL = 'http://127.0.0.1:32400'
+VERSION = ' V0.0.0.2'
+NAME = L('RemIdx')
+PREFIX = '/agents/remidx'
+PLUGIN_NAME = 'remidx'
+
+#myURL = 'http://127.0.0.1:32400'
+
+
+ART           = 'art-default.jpg'
+ICON          = 'icon-default.png'
+
 
 ####################################################################################################
 def Start():
 	print("********  Started %s on %s  **********" %(NAME  + VERSION, Platform.OS))
 	Log.Debug("*******  Started %s on %s  ***********" %(NAME  + VERSION, Platform.OS))
+	Plugin.AddPrefixHandler(PREFIX, Update, PLUGIN_NAME, ICON, ART)
+
 
 ####################################################################################################
 # Movie agent
@@ -70,6 +81,7 @@ class RemIdxMediaTV(Agent.TV_Shows):
 @route(PREFIX + '/GetMediaInfo')
 def GetMediaInfo(mediaID, myTitle):
 	Log.Debug('Checking media with an ID of : %s, and a title of : %s' %(mediaID, myTitle)) 
+	myURL = 'http://' +  Prefs['This_PMS_IP'] + ':' + Prefs['This_PMS_Port']
 	#Get the hash
 	myNewURL = myURL + '/library/metadata/' + mediaID + '/tree'
 	sections = XML.ElementFromURL(myNewURL).xpath('//MediaPart')
@@ -85,28 +97,77 @@ def GetMediaInfo(mediaID, myTitle):
 		Log.Debug('Index is missing for : %s with ID: %s' %(myTitle, mediaID)) 
 		print 'Index is missing for : %s with ID: %s' %(myTitle, mediaID)
 		#Get media info
-		myNewURL = myURL + '/library/metadata/' + mediaID	
+		myNewURL = myURL + '/library/metadata/' + mediaID
+		# Grap the Section ID
+		MediaContainer = XML.ElementFromURL(myNewURL)
+		mySectionID = MediaContainer.get('librarySectionID')
+		# Grap Media Info	
 		sections = XML.ElementFromURL(myNewURL).xpath('//Media')
 		for section in sections:
-			myWidth = section.get('width')
-			Log.Debug('Media witdh for %s is %s' %(mediaID, myWidth))
-			myHeight = section.get('height')
-			Log.Debug('Media height for %s is %s' %(mediaID, myHeight))
+			myAspectRatio = section.get('aspectRatio')
+			Log.Debug('Media AspectRatio for %s is %s' %(mediaID, myAspectRatio))
 		#Get streaming info
 		sections = XML.ElementFromURL(myNewURL).xpath('//Part')
 		for section in sections:
 			mySURL =  section.get('key')
-		RegIdx(mySURL, myMediaHash, myWidth, myHeight)
+		RegIdx(mySURL, myMediaHash, myTitle, mediaID, mySectionID, myAspectRatio)
 
 
 ####################################################################################################
 # ReqIdx will request an index from the remote indexer
 ####################################################################################################		
 @route(PREFIX + '/ReqIdx')
-def RegIdx(mySURL, myMediaHash, myWidth, myHeight):
-	myURL = 'http://' + Prefs['Remote_Idx_IP'] + ':' + Prefs['Remote_Port']+'/index?hash=' + myMediaHash + '&Stream=http://' + Prefs['This_PMS_IP'] + ':' + Prefs['This_PMS_Port'] + mySURL + '&Height=' + myHeight + '&Width=' + myWidth
+def RegIdx(mySURL, myMediaHash, myTitle, mediaID, mySectionID, myAspectRatio):
+	myURL = 'http://' + Prefs['Remote_Idx_IP'] + ':' + Prefs['Remote_Port']+'/?Stream=http://' + Prefs['This_PMS_IP'] + ':' + Prefs['This_PMS_Port'] + mySURL + '&AspectRatio=' + myAspectRatio + '&SectionID=' + mySectionID + '&mediaID=' + mediaID + '&Title=' + String.Quote(myTitle) + '&Hash=' + myMediaHash + '.bundle'
 	print myURL
-	print 'Tommy Need to send request to remote PC'
+	print 'Sending request to remote PC'
+	try:
+		HTTP.Request(myURL, None, {'X-HTTP-Method-Override': 'QUEUE'}).content()
+	except Exception:
+		1
+####################################################################################################
+# Update function called from remote indexer, when a Bif file is ready
+####################################################################################################		
+@route(PREFIX + '/Update')
+def Update():
+	print 'Der opdateres'
+	myURL = 'http://' + Prefs['Remote_Idx_IP'] + ':' + Prefs['Remote_Port'] + '/Out'
+	try:
+#		headers = {'X-HTTP-Method-Override': 'GETBIF'}
+#		local_filename = '/root/ged.bif'
+
+		request = urllib2.Request(myURL)
+		request.add_header('X-HTTP-Method-Override', 'GETBIF')
+		response = urllib2.urlopen(request)
+		data = response.read()
+		print data
+
+
+#		response = urllib.request.urlopen(myURL)
+#		html = response.read()
+#		print html
+
+
+
+
+
+#		data = {}
+#		req = urllib2.Request(myURL, '',  headers)
+#		response = urllib2.urlopen(req)
+#		the_page = response.read()
+#		print the_page
+
+	except Exception:
+		1
+	
+
+
+#local_filename, headers = urllib.request.urlretrieve('http://python.org/')
+#html = open(local_filename)
+
+
+#response = urllib.request.urlopen('http://python.org/')
+#html = response.read()
 
 ####################################################################################################
 # Validate preferences
