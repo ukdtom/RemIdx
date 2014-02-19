@@ -379,11 +379,8 @@ def slamPMS(myStream):
 	logging.debug('Slamming PMS @ : %s' %(PMSURL))
 	#Sending Slam
 	request = urllib2.Request(PMSURL)
-	urllib2.urlopen(request)
-
-
-
-	
+	response = urllib2.urlopen(request, timeout=60)
+	response.close()
 	return
 
 #***********************************************************************
