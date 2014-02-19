@@ -6,7 +6,7 @@
 
 test/
 
-*copy).py
+*copy)*
 *.odt#
 *.odt
 Remote_Indexer/Tmp

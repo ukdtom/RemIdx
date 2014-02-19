@@ -38,9 +38,7 @@ LOG_LEVEL = 'debug'
 # TODO
 # Search for TODO to find entry point
 #
-# Call PMS agent, and ask it to upload bif
 # Agent must put bif file in place
-# Agent must tell remote indexer to remove file from /Out
 # Agent must analyse media, to get bif into db
 #
 
@@ -116,6 +114,9 @@ class WebHandler(SimpleHTTPRequestHandler):
 		elif self.headers.getheader('X-HTTP-Method-Override') == 'GETBIF':
 			logging.debug('Got a GetBif listing Req')
 			SimpleHTTPRequestHandler.do_GET(self)
+		elif self.headers.getheader('X-HTTP-Method-Override') == 'KILLOUT':
+			logging.debug('Got a Kill Req')
+			self.Kill_get(False, 200)
 		else:
 			if self.path.endswith(".bif"):
 				logging.debug('Req to download bif file: ' + self.path)
@@ -123,6 +124,28 @@ class WebHandler(SimpleHTTPRequestHandler):
 			else:
 				logging.critical('Got an invalid Req')
 				self.get(True, 200)
+
+	def Kill_get(self, include_body, queue_result):
+		try:
+			# We only hand requests for bif files..
+			if urlparse(self.path).query.endswith(".bif"):
+				dict = parse_qs(urlparse(self.path).query)
+				self.sMyDir = os.path.realpath(os.path.dirname(sys.argv[0]))
+				KillFile = self.sMyDir + '/Out/' + str(dict['KillIt'])[2:-2]
+				logging.debug('About to remove file: ' + KillFile)
+				os.remove(KillFile)
+			else:
+				logging.critical('Not a valid request')
+				raise Exception('Not a valid request')
+		except IOError:
+			self.send_error(404, "Not Found")
+			self.end_headers()
+		except Exception as error:
+			self.send_error(404, error.__str__())
+			self.end_headers()
+		finally:
+			sys.stdout.flush()
+
 
 	def get(self, include_body, queue_result):
 		try:
@@ -373,14 +396,23 @@ def Logging():
 # Slam PMS about a Bif-file is ready
 #***********************************************************************
 def slamPMS(myStream):
+	#TODO: This one cause an error on the remote indexer!!!!
+	#We sadly always ends up with the exception
 	pos = myStream.find('/library/parts')
-	PMSURL = myStream[:pos] + '/agents/remidx/'
+	PMSURL = myStream[:pos] + '/agents/remidx'
 	print ('Slamming PMS @ : %s' %(PMSURL))
 	logging.debug('Slamming PMS @ : %s' %(PMSURL))
 	#Sending Slam
+	print 'TM 1234-1'
 	request = urllib2.Request(PMSURL)
-	response = urllib2.urlopen(request, timeout=60)
-	response.close()
+	print 'TM 1234-2'
+	try:
+		response = urllib2.urlopen(request, timeout=60)
+		response.close()
+		print 'TM 1234-3'
+	except:
+		print 'Slamming okay'
+	print 'TM 1234-4'
 	return
 
 #***********************************************************************
