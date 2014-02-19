@@ -1,3 +1,13 @@
+v0.0.0.3
+- Remote Indexer:
+-- Added out directory
+-- Added PMS Slam function
+-- Added Allow PMS to fetch created bif files
+- PMS Agent:
+-- Added Slamming URL
+-- Added Queue directory
+-- Added Download bif files rutine
+
 v0.0.0.2
 - Added local workhorse
 - Still not working

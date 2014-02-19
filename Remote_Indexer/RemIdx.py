@@ -38,16 +38,17 @@ LOG_LEVEL = 'debug'
 # TODO
 # Search for TODO to find entry point
 #
-# Create a bif file
-# Make http server ready for upload (GET request)
 # Call PMS agent, and ask it to upload bif
 # Agent must put bif file in place
+# Agent must tell remote indexer to remove file from /Out
 # Agent must analyse media, to get bif into db
+#
 
 
 
 
-VERSION = '0.0.0.2'
+
+VERSION = '0.0.0.3'
 
 import logging
 import io, json
@@ -64,8 +65,9 @@ import time
 import struct
 import glob
 import array
-from SimpleHTTPServer import SimpleHTTPRequestHandler # Python 2
+from SimpleHTTPServer import SimpleHTTPRequestHandler
 from BaseHTTPServer import HTTPServer
+import urllib2
 
 #import SocketServer
 
@@ -109,17 +111,18 @@ class WebHandler(SimpleHTTPRequestHandler):
 
 	def do_GET(self):
 		if self.headers.getheader('X-HTTP-Method-Override') == 'QUEUE':
-			print 'Tommy 1234: QUEUE Req'
 			logging.debug('Got a Queue Req')
 			self.get(False, 200)
 		elif self.headers.getheader('X-HTTP-Method-Override') == 'GETBIF':
-			print 'Tommy 1234 GetBif Req'
-			logging.info('Got a GetBif Req')
-			self.getBif(False, 200)
+			logging.debug('Got a GetBif listing Req')
+			SimpleHTTPRequestHandler.do_GET(self)
 		else:
-			print 'Tommy 1234 Invalid req'
-			logging.Critical('Got an invalid Req')
-			self.get(True, 503)
+			if self.path.endswith(".bif"):
+				logging.debug('Req to download bif file: ' + self.path)
+				SimpleHTTPRequestHandler.do_GET(self)
+			else:
+				logging.critical('Got an invalid Req')
+				self.get(True, 200)
 
 	def get(self, include_body, queue_result):
 		try:
@@ -243,25 +246,31 @@ def GenJPGs(myDir):
 			logging.debug('myAspectRatio is ' + myAspectRatio)
 		#Tell my Master what's going on here
 		print 'Starting to extract screenshots from %s' %myTitle
-		print 'Press q to stop extracting'
+		print 'Close the window to terminate'
 		#Find the needed resolution for the jpg's
 		if myAspectRatio > 1.5 :
 			resolution = "240x136" # SD 16:9 ~ 1.7 ratio
 		else :
 			resolution = "240x180" # SD 4:3 ~ 1.3 ratio
-		# TODO
+		# TODO start
 		#Seems like Plex use this size regardless of media
 		resolution = "320x136"
+		# TODO end
 		#Starting to grap screenshots	
 	    	ffmpeg= [PATH_TO_FFMPEG, '-loglevel', 'quiet', '-i', myStream, '-q', '3', '-s', resolution, '-r', '0.5', myDir + '/Tmp/%016d.jpg']
 	    	if subprocess.call(ffmpeg):
 			logging.critical('Could not extract images from video')
 			raise Exception('Could not extract images from video')
+			sys.exit(1)
 		else:
-#			if GenBif(myDir, myHash, mymediaID, mySectionID, myStream):
 			if MakeBIF(myDir, myHash, mymediaID, mySectionID, myStream):
 				# Remove from work queue
 				os.remove(myWList[0])
+				slamPMS(myStream)
+			else:
+				logging.critical('MakeBif failed')
+				print 'MakeBif failed !!!!!'
+				sys.exit(1)
 	else:
 		myTitle = '****** Idle, waiting for work ******'
 		ShutdownMsg(myTitle)	
@@ -270,72 +279,66 @@ def GenJPGs(myDir):
 # Generate the bif file
 #***********************************************************************
 def MakeBIF(myDir, myHash, mymediaID, mySectionID, myStream):
-	magic = [0x89,0x42,0x49,0x46,0x0d,0x0a,0x1a,0x0a]
-	version = 0
-	interval = 10
+	try:
+		magic = [0x89,0x42,0x49,0x46,0x0d,0x0a,0x1a,0x0a]
+		version = 0
+		interval = 10
 
-	myHash = os.path.splitext(myHash)[0]
-	filename = myDir + '/Out/' + myHash + '.bif'
-	#Create output directory
-	if not os.path.exists(myDir + '/Out'):
-		os.makedirs(myDir + '/Out')
+		myHash = os.path.splitext(myHash)[0]
+		filename = myDir + '/Out/' + myHash + '.bif'
+		#Create output directory
+		if not os.path.exists(myDir + '/Out'):
+			os.makedirs(myDir + '/Out')
 
-	files = os.listdir("%s" % (myDir + '/Tmp'))
-	images = []
-	for image in files:
-		if image[-4:] == '.jpg':
-			images.append(image)
-	images.sort()
-	images = images[1:]
+		files = os.listdir("%s" % (myDir + '/Tmp'))
+		images = []
+		for image in files:
+			if image[-4:] == '.jpg':
+				images.append(image)
+		images.sort()
+		images = images[1:]
 
-	f = open(filename, "wb")
-	array.array('B', magic).tofile(f)
-	f.write(struct.pack("<I1", version))
-	f.write(struct.pack("<I1", len(images)))
-	f.write(struct.pack("<I1", 1000 * interval))
-	array.array('B', [0x00 for x in xrange(20,64)]).tofile(f)
+		f = open(filename, "wb")
+		array.array('B', magic).tofile(f)
+		f.write(struct.pack("<I1", version))
+		f.write(struct.pack("<I1", len(images)))
+		f.write(struct.pack("<I1", 1000 * interval))
+		array.array('B', [0x00 for x in xrange(20,64)]).tofile(f)
 
-	bifTableSize = 8 + (8 * len(images))
-	imageIndex = 64 + bifTableSize
-	timestamp = 0
+		bifTableSize = 8 + (8 * len(images))
+		imageIndex = 64 + bifTableSize
+		timestamp = 0
 
-	# Get the length of each image
-	for image in images:
-		statinfo = os.stat("%s/%s" % (myDir + '/Tmp', image))
-		f.write(struct.pack("<I1", timestamp))
+		# Get the length of each image
+		for image in images:
+			statinfo = os.stat("%s/%s" % (myDir + '/Tmp', image))
+			f.write(struct.pack("<I1", timestamp))
+			f.write(struct.pack("<I1", imageIndex))
+
+			timestamp += 1
+			imageIndex += statinfo.st_size
+
+		f.write(struct.pack("<I1", 0xffffffff))
 		f.write(struct.pack("<I1", imageIndex))
 
-		timestamp += 1
-		imageIndex += statinfo.st_size
+		# Now copy the images
+		for image in images:
+			data = open("%s/%s" % (myDir + '/Tmp', image), "rb").read()
+			f.write(data)
 
-	f.write(struct.pack("<I1", 0xffffffff))
-	f.write(struct.pack("<I1", imageIndex))
-
-	# Now copy the images
-	for image in images:
-		data = open("%s/%s" % (myDir + '/Tmp', image), "rb").read()
-		f.write(data)
-
-	f.close()
-	myTitle = '****** Idle, waiting for work ******'
-	ShutdownMsg(myTitle)		
-	return True
+		f.close()
+		myTitle = '****** Idle, waiting for work ******'
+		ShutdownMsg(myTitle)
+		logging.debug('Bif file created for media hashed %s' %(myHash))
+		return True
+	except:
+		logging.critical('Error in creating a bif for file with a hash of %s' %(myHash))
+		return False
 
 #***********************************************************************
-# Main function
+# Show Banner
 #***********************************************************************
-def main():
-	# Configure logging
-	if LOG_LEVEL.upper() == 'NONE':
-		logging.basicConfig(filename=None)
-	else:		
-		log_level = getattr(logging, LOG_LEVEL.upper(), None)		
-		if not isinstance(log_level, int):
-	    		raise ValueError('Invalid log level: %s' % log_level)
-		logging.basicConfig(filename='RemIdx.log',level=log_level,format='%(asctime)s - %(levelname)s - %(funcName)s - %(lineno)d - %(message)s')
-	logging.info('***********************************************************************')
-	logging.info('Starting RemIdx Indexer')
-	# Show banner
+def ShowBanner():
 	print ''
 	print ''
 	print ''
@@ -353,11 +356,51 @@ def main():
 	print '* Path to ffmpeg is: ' + PATH_TO_FFMPEG
 	print '***********************************************************************'
 
+#***********************************************************************
+# Logger
+#***********************************************************************
+def Logging():
+	# Configure logging
+	if LOG_LEVEL.upper() == 'NONE':
+		logging.basicConfig(filename=None)
+	else:		
+		log_level = getattr(logging, LOG_LEVEL.upper(), None)		
+		if not isinstance(log_level, int):
+	    		raise ValueError('Invalid log level: %s' % log_level)
+		logging.basicConfig(filename='RemIdx.log',level=log_level,format='%(asctime)s - %(levelname)s - %(funcName)s - %(lineno)d - %(message)s')
+
+#***********************************************************************
+# Slam PMS about a Bif-file is ready
+#***********************************************************************
+def slamPMS(myStream):
+	pos = myStream.find('/library/parts')
+	PMSURL = myStream[:pos] + '/agents/remidx/'
+	print ('Slamming PMS @ : %s' %(PMSURL))
+	logging.debug('Slamming PMS @ : %s' %(PMSURL))
+	#Sending Slam
+	request = urllib2.Request(PMSURL)
+	urllib2.urlopen(request)
+
+
+
+	
+	return
+
+#***********************************************************************
+# Main function
+#***********************************************************************
+def main():
+	# Configure logging
+	Logging()
+	logging.info('***********************************************************************')
+	logging.info('Starting RemIdx Indexer')
+	# Show banner
+	ShowBanner()
 	# Check for correct FFMPEG Path
 	if not CheckFFMPEG():
 		print 'Quitting'
 		logging.info('Quitting RemIdx Indexer')
-		sys.exit(0)
+		sys.exit(1)
 	# Directory I live in
 	sMyDir = os.path.realpath(os.path.dirname(sys.argv[0]))
 	logging.debug('Starting from directory named : ' + sMyDir)
@@ -380,6 +423,7 @@ def main():
 	myWeb.stop()
 	logging.info('Quitting RemIdx Indexer')
 	print 'Quitting.....Please wait'
+	sys.exit(0)
 
 if __name__ == '__main__':
 	main()
