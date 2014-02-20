@@ -46,7 +46,7 @@ LOG_LEVEL = 'debug'
 
 
 
-VERSION = '0.0.0.3'
+VERSION = '0.0.0.4'
 
 import logging
 import io, json
@@ -265,8 +265,12 @@ def GenJPGs(myDir):
 			logging.debug('MediaID is ' + mymediaID)
 			mySectionID = data["SectionID"][0]
 			logging.debug('Section ID is ' + mySectionID)
-			myAspectRatio = data["AspectRatio"][0]
-			logging.debug('myAspectRatio is ' + myAspectRatio)
+			try:
+				myAspectRatio = data["AspectRatio"][0]
+				logging.debug('myAspectRatio is ' + myAspectRatio)
+			except:
+				logging.debug('AspectRatio is missing')
+				myAspectRatio = 'empty'
 		#Tell my Master what's going on here
 		print 'Starting to extract screenshots from %s' %myTitle
 		print 'Close the window to terminate'
@@ -350,6 +354,8 @@ def MakeBIF(myDir, myHash, mymediaID, mySectionID, myStream):
 			f.write(data)
 
 		f.close()
+		#Remove Tmp files
+		shutil.rmtree(myDir + '/Tmp')
 		myTitle = '****** Idle, waiting for work ******'
 		ShutdownMsg(myTitle)
 		logging.debug('Bif file created for media hashed %s' %(myHash))
@@ -403,17 +409,15 @@ def slamPMS(myStream):
 	print ('Slamming PMS @ : %s' %(PMSURL))
 	logging.debug('Slamming PMS @ : %s' %(PMSURL))
 	#Sending Slam
-	print 'TM 1234-1'
 	request = urllib2.Request(PMSURL)
-	print 'TM 1234-2'
 	try:
 		response = urllib2.urlopen(request, timeout=60)
 		response.close()
-		print 'TM 1234-3'
 	except:
 		print 'Slamming okay'
-	print 'TM 1234-4'
-	return
+	# Tell my Master I'm falling asleep
+	myTitle = '****** Idle, waiting for work ******'
+	ShutdownMsg(myTitle)
 
 #***********************************************************************
 # Main function
@@ -445,6 +449,8 @@ def main():
 	myQueue = BifQueue()
 	myQueue.deamon = True
 	myQueue.start()
+	# Check if some work is already waiting for us to pick up
+	GenJPGs(sMyDir)
 	#Wait for my Master is pressing <ENTER>
 	print 'Press <ENTER> to stop'
 	raw_input('')	
