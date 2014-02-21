@@ -29,14 +29,14 @@ LOCAL_PORT = "32405"
 #
 # LOG_LEVEL can be none, debug, info, warning, error and critical
 # Switch to debug when doing troubleshooting
-LOG_LEVEL = 'none'
+LOG_LEVEL = 'debug'
 #***********************************************************************
 # CUSTOMIZE END!
 #***********************************************************************
 
 # Search for TODO to find entry point
 
-VERSION = '0.0.0.5'
+VERSION = '0.0.0.6'
 
 import logging
 import io, json
@@ -56,6 +56,7 @@ import array
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 from BaseHTTPServer import HTTPServer
 import urllib2
+import platform
 
 #***********************************************************************
 # Check FFMEGP location
@@ -119,7 +120,7 @@ class WebHandler(SimpleHTTPRequestHandler):
 			if urlparse(self.path).query.endswith(".bif"):
 				dict = parse_qs(urlparse(self.path).query)
 				self.sMyDir = os.path.realpath(os.path.dirname(sys.argv[0]))
-				KillFile = self.sMyDir + '/Out/' + str(dict['KillIt'])[2:-2]
+				KillFile = os.path.join(self.sMyDir, 'Out', str(dict['KillIt'])[2:-2])
 				logging.debug('About to remove file: ' + KillFile)
 				os.remove(KillFile)
 			else:
@@ -142,8 +143,8 @@ class WebHandler(SimpleHTTPRequestHandler):
 				dict = parse_qs(urlparse(self.path).query)
 				# Create Queue Entry
 				self.sMyDir = os.path.realpath(os.path.dirname(sys.argv[0]))
-				sQueueFile = self.sMyDir + '/Queue/' + str(dict['Hash'])[2:-2]
-				sWorkFile = self.sMyDir + '/Work/' + str(dict['Hash'])[2:-2]
+				sQueueFile = os.path.join(self.sMyDir, 'Queue', str(dict['Hash'])[2:-2])
+				sWorkFile = os.path.join(self.sMyDir, 'Work', str(dict['Hash'])[2:-2])
 				if os.path.isfile(sWorkFile):
 					#Already working on it
 					logging.warning('The queue request recieved was already in progress')
@@ -209,14 +210,14 @@ class BifQueue(threading.Thread):
 		self.myDir = os.path.realpath(os.path.dirname(sys.argv[0]))
 		# Loop will continue until the stopthread event is set
 		while not self.stopthread.isSet():
-			myQList = glob.glob(self.myDir + '/Queue/*.bundle')
+			myQList = glob.glob(os.path.join(self.myDir, 'Queue', '*.bundle'))
 			if len(myQList) > 0:
 				# Check if Work dir allready has an entry
-				myWList = glob.glob(self.myDir + '/Work/*.bundle')
+				myWList = glob.glob(os.path.join(self.myDir, 'Work', '*.bundle'))
 				if len(myWList) == 0:
 					logging.debug('Need to move ' + myQList[0] + ' from Queue to Work')
 					# Nothing to do, but work in queue
-					sDestination = self.myDir + '/Work/' + os.path.basename(myQList[0])
+					sDestination = os.path.join(self.myDir, 'Work', os.path.basename(myQList[0]))
 					# Move to work queue
 					shutil.move(myQList[0],sDestination)
 					GenJPGs(self.myDir)
@@ -232,13 +233,14 @@ class BifQueue(threading.Thread):
 #***********************************************************************
 def GenJPGs(myDir):
 	# Check if Work dir allready has an entry
-	myWList = glob.glob(myDir + '/Work/*.bundle')
+	myWDir = os.path.join(myDir, 'Work', '*.bundle')
+	myWList = glob.glob(myWDir)
 	if len(myWList) > 0:
 		#If tmp directory already existed, nuke it
-		if os.path.exists(myDir + '/Tmp'):
-			shutil.rmtree(myDir + '/Tmp')
+		if os.path.exists(os.path.join(myDir, 'Tmp')):
+			shutil.rmtree(os.path.join(myDir, 'Tmp'))
 		#Create tmp directory
-		os.makedirs(myDir + '/Tmp')
+		os.makedirs(os.path.join(myDir, 'Tmp'))
 		logging.debug('Started to work on bundle ' + myWList[0])
 		#Extract needed info from work bundle json file
 		with open(myWList[0]) as data_file:
@@ -298,14 +300,12 @@ def MakeBIF(myDir, myHash, mymediaID, mySectionID, myStream):
 		magic = [0x89,0x42,0x49,0x46,0x0d,0x0a,0x1a,0x0a]
 		version = 0
 		interval = 10
-
 		myHash = os.path.splitext(myHash)[0]
-		filename = myDir + '/Out/' + mymediaID + '-' + myHash + '.bif'
+		filename = os.path.join(myDir, 'Out', mymediaID + '-' + myHash + '.bif')
 		#Create output directory
-		if not os.path.exists(myDir + '/Out'):
-			os.makedirs(myDir + '/Out')
-
-		files = os.listdir("%s" % (myDir + '/Tmp'))
+		if not os.path.exists(os.path.join(myDir, 'Out')):
+			os.makedirs(os.path.join(myDir, 'Out'))
+		files = os.listdir("%s" %(os.path.join(myDir, 'Tmp')))
 		images = []
 		for image in files:
 			if image[-4:] == '.jpg':
@@ -326,7 +326,7 @@ def MakeBIF(myDir, myHash, mymediaID, mySectionID, myStream):
 
 		# Get the length of each image
 		for image in images:
-			statinfo = os.stat("%s/%s" % (myDir + '/Tmp', image))
+			statinfo = os.stat("%s/%s" % (os.path.join(myDir, 'Tmp'), image))
 			f.write(struct.pack("<I1", timestamp))
 			f.write(struct.pack("<I1", imageIndex))
 
@@ -338,12 +338,13 @@ def MakeBIF(myDir, myHash, mymediaID, mySectionID, myStream):
 
 		# Now copy the images
 		for image in images:
-			data = open("%s/%s" % (myDir + '/Tmp', image), "rb").read()
+			data = open("%s/%s" % (os.path.join(myDir, 'Tmp'), image), "rb").read()
 			f.write(data)
 
 		f.close()
 		#Remove Tmp files
-		shutil.rmtree(myDir + '/Tmp')
+		shutil.rmtree(os.path.join(myDir, 'Tmp'))
+
 		myTitle = '****** Idle, waiting for work ******'
 		ShutdownMsg(myTitle)
 		logging.debug('Bif file created for media hashed %s' %(myHash))
@@ -364,6 +365,8 @@ def ShowBanner():
 	print ''
 	print '***********************************************************************'
 	print '* Welcome to the RemIdx Remote Indexer version ' + VERSION
+	print '*'
+	print '* Running on ' + platform.system()
 	print '*'
 	print '* Made by dane22, a Plex community member'
 	print '*'
@@ -414,7 +417,7 @@ def main():
 	# Configure logging
 	Logging()
 	logging.info('***********************************************************************')
-	logging.info('Starting RemIdx Indexer')
+	logging.info('Starting RemIdx Indexer version %s on %s' %(VERSION, platform.system()))
 	# Show banner
 	ShowBanner()
 	# Check for correct FFMPEG Path
@@ -426,10 +429,12 @@ def main():
 	sMyDir = os.path.realpath(os.path.dirname(sys.argv[0]))
 	logging.debug('Starting from directory named : ' + sMyDir)
 	# Create Queue and Work Directory
-	if not os.path.exists(sMyDir + '/Queue'):
-		os.makedirs(sMyDir + '/Queue')
-	if not os.path.exists(sMyDir + '/Work'):
-		os.makedirs(sMyDir + '/Work')
+	myQDir = os.path.join(sMyDir,'Queue')
+	if not os.path.exists(myQDir):
+		os.makedirs(myQDir)
+	myWDir = os.path.join(sMyDir,'Work')
+	if not os.path.exists(myWDir):
+		os.makedirs(myWDir)
 	# Start WebServer
 	myWeb = WebServer()
 	myWeb.start()
@@ -440,7 +445,7 @@ def main():
 	# Check if some work is already waiting for us to pick up
 	GenJPGs(sMyDir)
 	#Wait for my Master is pressing <ENTER>
-	print 'Press <ENTER> to stop'
+#	print 'Press <ENTER> to quit'
 	raw_input('')	
 	myQueue.stop()
 	myWeb.stop()
