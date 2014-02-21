@@ -28,25 +28,15 @@ PATH_TO_FFMPEG = "/usr/bin/ffmpeg"
 LOCAL_PORT = "32405"
 #
 # LOG_LEVEL can be none, debug, info, warning, error and critical
-LOG_LEVEL = 'debug'
+# Switch to debug when doing troubleshooting
+LOG_LEVEL = 'none'
 #***********************************************************************
 # CUSTOMIZE END!
 #***********************************************************************
 
-
-
-# TODO
 # Search for TODO to find entry point
-#
-# Agent must put bif file in place
-# Agent must analyse media, to get bif into db
-#
 
-
-
-
-
-VERSION = '0.0.0.4'
+VERSION = '0.0.0.5'
 
 import logging
 import io, json
@@ -66,8 +56,6 @@ import array
 from SimpleHTTPServer import SimpleHTTPRequestHandler
 from BaseHTTPServer import HTTPServer
 import urllib2
-
-#import SocketServer
 
 #***********************************************************************
 # Check FFMEGP location
@@ -312,7 +300,7 @@ def MakeBIF(myDir, myHash, mymediaID, mySectionID, myStream):
 		interval = 10
 
 		myHash = os.path.splitext(myHash)[0]
-		filename = myDir + '/Out/' + myHash + '.bif'
+		filename = myDir + '/Out/' + mymediaID + '-' + myHash + '.bif'
 		#Create output directory
 		if not os.path.exists(myDir + '/Out'):
 			os.makedirs(myDir + '/Out')

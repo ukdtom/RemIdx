@@ -1,11 +1,10 @@
 import re
 import os
-#import inspect
 from lxml import etree
 import urllib2
 import urllib
 
-VERSION = ' V0.0.0.4'
+VERSION = ' V0.0.0.5'
 NAME = L('RemIdx')
 PREFIX = '/agents/remidx'
 PLUGIN_NAME = 'remidx'
@@ -17,8 +16,13 @@ AGENTNAME = 'com.plexapp.agents.remidx'
 def Start():
 	print("********  Started %s on %s  **********" %(NAME  + VERSION, Platform.OS))
 	Log.Debug("*******  Started %s on %s  ***********" %(NAME  + VERSION, Platform.OS))
+	# Allow callback from remote indexer
 	Plugin.AddPrefixHandler(PREFIX, Update, PLUGIN_NAME, ICON, ART)
-
+	# Switch of auto indexing of libraries, sadly, framework only supports GET, so need to use urllib2
+	opener = urllib2.build_opener(urllib2.HTTPHandler)
+	request = urllib2.Request('http://127.0.0.1:32400/:/prefs?GenerateIndexFilesDuringAnalysis=0')
+	request.get_method = lambda: 'PUT'
+	url = opener.open(request)
 
 ####################################################################################################
 # Movie agent
@@ -175,38 +179,42 @@ def Update():
 			pos = bif.find('href="') + 6
 			pos2 = bif.find('">')
 			bif = bif[pos:pos2]
+			Log.Debug('Got this file from the Remote Indexer: %s' %(bif))
+			# Get the Media ID
+			pos = bif.find('-')
+			myMediaID = bif[:pos]
+			Log.Debug('Media ID is : %s' %(myMediaID))
+			sTargetDir = Core.app_support_path + '/Media/localhost/' + bif[pos+1:pos+2] + '/' + os.path.splitext(bif[pos+2:])[0] + '.bundle/Contents/Indexes'
+			Log.Debug('Target Directory is : %s' %(sTargetDir))
+			# Create target dir if it doesn't exists
+			if not os.path.exists(sTargetDir):
+				os.makedirs(sTargetDir)
 			myBifURL = myURL + '/' + bif
+			Log.Debug('Download URL is %s' %(myBifURL))					
 			#TODO: Need to check, if below was a success, before continue
-			urllib.urlretrieve(myBifURL, 'Queue/' + bif)
+			urllib.urlretrieve(myBifURL, sTargetDir + '/index-sd.bif')
+			Add2Db(myMediaID)
 			KillOnRemote(bif)
-			MoveBif(bif)
+
 	except Exception:
 		1
-
 ####################################################################################################
-# Move bif files to final destination
+# This will add the newly placed index to the database
 ####################################################################################################
-def MoveBif(bif):
-	bif = os.path.splitext(bif)[0]
-	# Finding target dir
-	sFirstDir = bif[0:1]
-	sSecondDir = bif[1:] + '.bundle/Contents/Indexes'
-	sTargetDir = Core.app_support_path + '/Media/localhost/' + sFirstDir + '/' + sSecondDir
-	# Create target dir if it doesn't exists
-	if not os.path.exists(sTargetDir):
-		os.makedirs(sTargetDir)
-	sTargetFile = sTargetDir + '/index-sd.bif'
-	# Finding Source File
-	sSourceFile = Core.storage.join_path(Core.app_support_path, Core.config.plugin_support_dir_name) + '/Data/' +  AGENTNAME +  '/Queue/' + bif + '.bif'
+def Add2Db(myMediaID):
+	opener = urllib2.build_opener(urllib2.HTTPHandler)
+	request = urllib2.Request('http://127.0.0.1:32400/:/prefs?GenerateIndexFilesDuringAnalysis=1')
+	request.get_method = lambda: 'PUT'
+	url = opener.open(request)
 
-	if os.path.isfile(sSourceFile):
-		print 'YES...Source is there'
-	print 'Tommy 12345 SOURCE : ' + sSourceFile
-	print 'Tommy 12345 TARGET : ' + sTargetFile
+	request = urllib2.Request('http://127.0.0.1:32400/library/metadata/' + myMediaID + '/analyze')
+	request.get_method = lambda: 'PUT'
+	url = opener.open(request)
 
-	print 'THIS DOESNT WORK TODO'		
+	request = urllib2.Request('http://127.0.0.1:32400/:/prefs?GenerateIndexFilesDuringAnalysis=0')
+	request.get_method = lambda: 'PUT'
+	url = opener.open(request)
 
-	shutil.move(sSourceFile, sTargetFile)
 
 ####################################################################################################
 # This will remove the entry from the remote indexers /Out directory
