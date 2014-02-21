@@ -4,7 +4,7 @@ from lxml import etree
 import urllib2
 import urllib
 
-VERSION = ' V0.0.0.5'
+VERSION = ' V0.0.0.6'
 NAME = L('RemIdx')
 PREFIX = '/agents/remidx'
 PLUGIN_NAME = 'remidx'
@@ -31,7 +31,7 @@ class RemIdxMediaMovie(Agent.Movies):
 	name = NAME + ' (Movies)'
 	languages = [Locale.Language.NoLanguage]
 	primary_provider = False
-	contributes_to = ['com.plexapp.agents.none']
+	contributes_to = ['com.plexapp.agents.imdb', 'com.plexapp.agents.themoviedb', 'com.plexapp.agents.none']
   	# Satisfy the framework here
 	def search(self, results, media, lang):
 		results.Append(MetadataSearchResult(id='null', score = 100))
@@ -41,12 +41,13 @@ class RemIdxMediaMovie(Agent.Movies):
 		GetMediaInfoMovie(media.id, media.title)
 
 
+
 ####################################################################################################
 # TV Show agent
 ####################################################################################################		
 class RemIdxMediaTV(Agent.TV_Shows):
 	name = NAME + ' (TV)'
-	languages = [Locale.Language.NoLanguage]
+	contributes_to = ['com.plexapp.agents.thetvdb', 'com.plexapp.agents.none']
 	primary_provider = False
 	contributes_to = ['com.plexapp.agents.none']
   	# Satisfy the framework here
@@ -71,7 +72,7 @@ def GetMediaInfoMovie(mediaID, myTitle):
 		myMediaHash = section.get('hash')
 		Log.Debug('The hash for media %s is %s' %(mediaID, myMediaHash))
 		# Does an index already exists?
-		myIdxFile = Core.app_support_path + '/Media/localhost/' + myMediaHash[:1] + '/' + myMediaHash[1:] + '.bundle/Contents/Indexes/index-sd.bif'
+		myIdxFile = os.path.join(Core.app_support_path, 'Media', 'localhost', myMediaHash[:1], myMediaHash[1:] + '.bundle', 'Contents', 'Indexes', 'index-sd.bif')
 		Log.Debug('myIdxFile is : ' + myIdxFile)
 		if os.path.isfile(myIdxFile):
 			Log.Debug('Index exists for : %s with ID: %s, so skipping' %(myTitle, mediaID))
@@ -92,7 +93,6 @@ def GetMediaInfoMovie(mediaID, myTitle):
 			for section in sections:
 				mySURL =  section.get('key')
 			RegIdx(mySURL, myMediaHash, myTitle, mediaID, mySectionID, myAspectRatio)
-
 
 ####################################################################################################
 # GetMediaInfo will grap some info for a TV-Show media, and decide if futher action is needed
@@ -129,7 +129,7 @@ def GetMediaInfoTV(mediaID, myTitle):
 			myMediaHash = section.get('hash')
 			Log.Debug('The hash for media %s is %s' %(myKey, myMediaHash))
 		# Does an index already exists?
-		myIdxFile = Core.app_support_path + '/Media/localhost/' + myMediaHash[:1] + '/' + myMediaHash[1:] + '.bundle/Contents/Indexes/index-sd.bif'
+		myIdxFile = os.path.join(Core.app_support_path, 'Media', 'localhost', myMediaHash[:1], myMediaHash[1:] + '.bundle', 'Contents', 'Indexes', 'index-sd.bif')
 		Log.Debug('myIdxFile is : ' + myIdxFile)
 		if os.path.isfile(myIdxFile):
 			Log.Debug('Index exists for : %s with ID: %s, so skipping' %(myEpisodeTitle, myKey))
@@ -184,7 +184,7 @@ def Update():
 			pos = bif.find('-')
 			myMediaID = bif[:pos]
 			Log.Debug('Media ID is : %s' %(myMediaID))
-			sTargetDir = Core.app_support_path + '/Media/localhost/' + bif[pos+1:pos+2] + '/' + os.path.splitext(bif[pos+2:])[0] + '.bundle/Contents/Indexes'
+			sTargetDir = os.path.join(Core.app_support_path, 'Media', 'localhost', bif[pos+1:pos+2], os.path.splitext(bif[pos+2:])[0] + '.bundle', 'Contents', 'Indexes')
 			Log.Debug('Target Directory is : %s' %(sTargetDir))
 			# Create target dir if it doesn't exists
 			if not os.path.exists(sTargetDir):
@@ -203,14 +203,15 @@ def Update():
 ####################################################################################################
 def Add2Db(myMediaID):
 	opener = urllib2.build_opener(urllib2.HTTPHandler)
+	#Enable Index Generation
 	request = urllib2.Request('http://127.0.0.1:32400/:/prefs?GenerateIndexFilesDuringAnalysis=1')
 	request.get_method = lambda: 'PUT'
 	url = opener.open(request)
-
+	#Analyze media
 	request = urllib2.Request('http://127.0.0.1:32400/library/metadata/' + myMediaID + '/analyze')
 	request.get_method = lambda: 'PUT'
 	url = opener.open(request)
-
+	#Disable Indexing
 	request = urllib2.Request('http://127.0.0.1:32400/:/prefs?GenerateIndexFilesDuringAnalysis=0')
 	request.get_method = lambda: 'PUT'
 	url = opener.open(request)
