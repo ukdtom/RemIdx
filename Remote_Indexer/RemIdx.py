@@ -27,6 +27,13 @@ PATH_TO_FFMPEG = "/usr/bin/ffmpeg"
 #
 LOCAL_PORT = "32405"
 #
+# This is the amout of CPU cores that will be used during FFMPEG Screenshot capture
+# As a default, FFMPEG will use all availible CPU power
+# If you have like a 4 core  CPU, you might want to set the limit to 3, leaving one core for you
+# In below, auto means default, aka. use all CPU
+# Valid values are: 'auto', '1', '2',... and so on
+FFMPEG_THREADS = '3'
+
 # LOG_LEVEL can be none, debug, info, warning, error and critical
 # Switch to debug when doing troubleshooting
 LOG_LEVEL = 'debug'
@@ -36,7 +43,7 @@ LOG_LEVEL = 'debug'
 
 # Search for TODO to find entry point
 
-VERSION = '0.0.0.6'
+VERSION = '0.0.0.7'
 
 import logging
 import io, json
@@ -274,7 +281,7 @@ def GenJPGs(myDir):
 		resolution = "320x136"
 		# TODO end
 		#Starting to grap screenshots	
-	    	ffmpeg= [PATH_TO_FFMPEG, '-loglevel', 'quiet', '-i', myStream, '-q', '3', '-s', resolution, '-r', '0.5', myDir + '/Tmp/%016d.jpg']
+	    	ffmpeg= [PATH_TO_FFMPEG, '-threads', FFMPEG_THREADS, '-loglevel', 'quiet', '-i', myStream, '-q', '3', '-s', resolution, '-r', '0.5', myDir + '/Tmp/%016d.jpg']
 	    	if subprocess.call(ffmpeg):
 			logging.critical('Could not extract images from video')
 			raise Exception('Could not extract images from video')
