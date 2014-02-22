@@ -1,3 +1,6 @@
+V0.0.1.0
+-- Now supported on Windows as well
+
 V0.0.0.7
 - Remote Indexer:
 -- Added a Thread limit to FFMPEG

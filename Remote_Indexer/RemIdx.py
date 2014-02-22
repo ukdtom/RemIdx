@@ -19,8 +19,9 @@
 # Value must be the full path to ffmpeg executable
 #
 # Like on my OpenSuse box, it's /usr/bin/ffmpeg
+# Note: Do not remove the r caracter before the string
 #
-PATH_TO_FFMPEG = "/usr/bin/ffmpeg"
+PATH_TO_FFMPEG = r"/usr/bin/ffmpeg"
 #
 # This is the port that our webserver listens to, and you must make sure, that it's
 # allowed in your firewall, as well as configured in the RemIdx agent on your PMS
@@ -36,14 +37,14 @@ FFMPEG_THREADS = 'auto'
 
 # LOG_LEVEL can be none, debug, info, warning, error and critical
 # Switch to debug when doing troubleshooting
-LOG_LEVEL = 'debug'
+LOG_LEVEL = 'none'
 #***********************************************************************
 # CUSTOMIZE END!
 #***********************************************************************
 
 # Search for TODO to find entry point
 
-VERSION = '0.0.0.7'
+VERSION = '0.0.1.0'
 
 import logging
 import io, json
@@ -401,9 +402,9 @@ def Logging():
 #***********************************************************************
 def slamPMS(myStream):
 	#TODO: This one cause an error on the remote indexer!!!!
-	#We sadly always ends up with the exception
+	# We sadly always ends up with the exception
 	pos = myStream.find('/library/parts')
-	PMSURL = myStream[:pos] + '/agents/remidx'
+	PMSURL = myStream[:pos] + '/agents/remidx/update'
 	print ('Slamming PMS @ : %s' %(PMSURL))
 	logging.debug('Slamming PMS @ : %s' %(PMSURL))
 	#Sending Slam
@@ -452,7 +453,6 @@ def main():
 	# Check if some work is already waiting for us to pick up
 	GenJPGs(sMyDir)
 	#Wait for my Master is pressing <ENTER>
-#	print 'Press <ENTER> to quit'
 	raw_input('')	
 	myQueue.stop()
 	myWeb.stop()
