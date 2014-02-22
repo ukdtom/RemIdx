@@ -32,7 +32,7 @@ LOCAL_PORT = "32405"
 # If you have like a 4 core  CPU, you might want to set the limit to 3, leaving one core for you
 # In below, auto means default, aka. use all CPU
 # Valid values are: 'auto', '1', '2',... and so on
-FFMPEG_THREADS = '3'
+FFMPEG_THREADS = 'auto'
 
 # LOG_LEVEL can be none, debug, info, warning, error and critical
 # Switch to debug when doing troubleshooting
