@@ -1,3 +1,10 @@
+V0.0.1.1
+- Removed start files, since they where not working.
+- Updated doc with how-to start Remote Indexer
+- PMS Agent:
+-- Fixed issue with registration under TV-Shows
+-- Corrected info and link in info.plist
+
 V0.0.1.0
 -- Now supported on Windows as well
 

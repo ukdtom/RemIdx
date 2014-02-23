@@ -44,7 +44,7 @@ LOG_LEVEL = 'none'
 
 # Search for TODO to find entry point
 
-VERSION = '0.0.1.0'
+VERSION = '0.0.1.1'
 
 import logging
 import io, json

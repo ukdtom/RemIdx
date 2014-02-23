@@ -4,7 +4,7 @@ from lxml import etree
 import urllib2
 import urllib
 
-VERSION = ' V0.0.1.0'
+VERSION = ' V0.0.1.1'
 NAME = L('RemIdx')
 PREFIX = '/agents/remidx'
 PLUGIN_NAME = 'remidx'
@@ -47,9 +47,8 @@ class RemIdxMediaMovie(Agent.Movies):
 ####################################################################################################		
 class RemIdxMediaTV(Agent.TV_Shows):
 	name = NAME + ' (TV)'
-	contributes_to = ['com.plexapp.agents.thetvdb', 'com.plexapp.agents.none']
 	primary_provider = False
-	contributes_to = ['com.plexapp.agents.none']
+	contributes_to = ['com.plexapp.agents.thetvdb', 'com.plexapp.agents.none']
   	# Satisfy the framework here
 	def search(self, results, media, lang):
 		results.Append(MetadataSearchResult(id='null', score = 100))

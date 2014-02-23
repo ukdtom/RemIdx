@@ -6,7 +6,7 @@
 	<string>com.plexapp.agents.remidx</string>
 	<key>PlexAgentAttributionText</key>
 	<string>
-		The main purpose of the &lt;a href=&quot;http://forums.plex.tv/index.php/topic/94864-rel-str2utf-8/&quot;&gt;srt2utf-8&lt;/a&gt; agent is to offload&lt;br/&gt;
+		The main purpose of the &lt;a href=&quot;https://forums.plex.tv/index.php/topic/99413-rel-remidx/&quot;&gt;RemIdx&lt;/a&gt; agent is to offload&lt;br/&gt;
 		the hard work of generating indexes to a remote PC.&lt;br/&gt; For the manual, please look &lt;a href=&quot;https://github.com/ukdtom/RemIdx/wiki/&quot;&gt;here&lt;/a&gt;</string>
 	<key>PlexFrameworkVersion</key>
 	<string>2</string>
