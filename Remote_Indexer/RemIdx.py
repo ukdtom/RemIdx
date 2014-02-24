@@ -13,38 +13,9 @@
 #
 #***********************************************************************
 
-#***********************************************************************
-# CUSTOMIZE BELOW!
-#***********************************************************************
-# Value must be the full path to ffmpeg executable
-#
-# Like on my OpenSuse box, it's /usr/bin/ffmpeg
-# Note: Do not remove the r caracter before the string
-#
-PATH_TO_FFMPEG = r"/usr/bin/ffmpeg"
-#
-# This is the port that our webserver listens to, and you must make sure, that it's
-# allowed in your firewall, as well as configured in the RemIdx agent on your PMS
-#
-LOCAL_PORT = "32405"
-#
-# This is the amout of CPU cores that will be used during FFMPEG Screenshot capture
-# As a default, FFMPEG will use all availible CPU power
-# If you have like a 4 core  CPU, you might want to set the limit to 3, leaving one core for you
-# In below, auto means default, aka. use all CPU
-# Valid values are: 'auto', '1', '2',... and so on
-FFMPEG_THREADS = 'auto'
+# Search for TODO to find entry point for work in progress
 
-# LOG_LEVEL can be none, debug, info, warning, error and critical
-# Switch to debug when doing troubleshooting
-LOG_LEVEL = 'none'
-#***********************************************************************
-# CUSTOMIZE END!
-#***********************************************************************
-
-# Search for TODO to find entry point
-
-VERSION = '0.0.1.1'
+VERSION = '0.0.1.2'
 
 import logging
 import io, json
@@ -65,6 +36,13 @@ from SimpleHTTPServer import SimpleHTTPRequestHandler
 from BaseHTTPServer import HTTPServer
 import urllib2
 import platform
+import ConfigParser
+
+# Initialize the Global vars used
+PATH_TO_FFMPEG = ""
+LOCAL_PORT = ""
+FFMPEG_THREADS = ""
+LOG_LEVEL = ""
 
 #***********************************************************************
 # Check FFMEGP location
@@ -80,11 +58,14 @@ def CheckFFMPEG():
 		print '*'
 		print '*     ERROR!!!! Could not validate the path to the FFMPEG executable!!!'
 		print '*     Check above message'
+		print '*'
+		print '*     Delete the file named RemIdx.ini to configure during next run'
+		print '*'
 		print '*     Quiting now!'
 		print '*'
 		print '*'
 		print '***********************************************************************'
-		logging.critical('FFMPEG not found at %s' %(PATH_TO_FFMPEG))		
+		logging.critical('FFMPEG not found at %s' %(PATH_TO_FFMPEG))
 		return False
 
 #***********************************************************************
@@ -272,12 +253,12 @@ def GenJPGs(myDir):
 		#Tell my Master what's going on here
 		print 'Starting to extract screenshots from %s' %myTitle
 		print 'Close the window to terminate'
+		# TODO start
 		#Find the needed resolution for the jpg's
 		if myAspectRatio > 1.5 :
 			resolution = "240x136" # SD 16:9 ~ 1.7 ratio
 		else :
 			resolution = "240x180" # SD 4:3 ~ 1.3 ratio
-		# TODO start
 		#Seems like Plex use this size regardless of media
 		resolution = "320x136"
 		# TODO end
@@ -297,7 +278,7 @@ def GenJPGs(myDir):
 				print 'MakeBif failed !!!!!'
 				sys.exit(1)
 	else:
-		myTitle = '****** Idle, waiting for work ******'
+		myTitle = '      ****** Idle, waiting for work ******'
 		ShutdownMsg(myTitle)	
 
 #***********************************************************************
@@ -378,8 +359,8 @@ def ShowBanner():
 	print '*'
 	print '* Made by dane22, a Plex community member'
 	print '*'
-	print '* If you have not yet customized me, you need to do so now!'
-	print '* Press <ENTER>, and edit lines 23 and 28 before starting me again'
+	print '* To reconfigure, either edit the file named RemIdx.ini, or delete it'
+	print '*'
 	print '***********************************************************************'
 	print '* Path to ffmpeg is: ' + PATH_TO_FFMPEG
 	print '***********************************************************************'
@@ -404,7 +385,7 @@ def slamPMS(myStream):
 	#TODO: This one cause an error on the remote indexer!!!!
 	# We sadly always ends up with the exception
 	pos = myStream.find('/library/parts')
-	PMSURL = myStream[:pos] + '/agents/remidx/update'
+	PMSURL = myStream[:pos] + '/agents/remidx'
 	print ('Slamming PMS @ : %s' %(PMSURL))
 	logging.debug('Slamming PMS @ : %s' %(PMSURL))
 	#Sending Slam
@@ -415,13 +396,118 @@ def slamPMS(myStream):
 	except:
 		print 'Slamming okay'
 	# Tell my Master I'm falling asleep
-	myTitle = '****** Idle, waiting for work ******'
+	myTitle = '          ****** Idle, waiting for work ******'
 	ShutdownMsg(myTitle)
+
+#***********************************************************************
+# conf function
+#***********************************************************************
+class conf():
+	def __init__(self, sMyDir):
+		if not os.path.isfile(os.path.join(sMyDir,'RemIdx.ini')):
+			# No ini file, so let's create one
+			with open(os.path.join(sMyDir,'RemIdx.ini'), 'wb') as configfile:
+				self.Config = ConfigParser.ConfigParser()
+				self.Config.read(os.path.join(sMyDir,'RemIdx.ini'))
+				self.Config.add_section('Configuration')
+				self.Config.add_section('RemIdx')
+			self.SetConf(sMyDir)
+		else:
+			# Found an ini file			
+			self.Config = ConfigParser.ConfigParser()
+			self.Config.read(os.path.join(sMyDir,'RemIdx.ini'))
+			try:
+				if not self.Config.getboolean("Configuration", "IsSet"):
+					self.SetConf(sMyDir)
+				else:
+					self.ReadConf()
+			except:
+				# During last configuration, my master aborted :-(
+				with open(os.path.join(sMyDir,'RemIdx.ini'), 'wb') as configfile:
+					self.Config = ConfigParser.ConfigParser()
+					self.Config.read(os.path.join(sMyDir,'RemIdx.ini'))
+					self.Config.add_section('Configuration')
+					self.Config.add_section('RemIdx')
+				self.SetConf(sMyDir)
+
+	def ReadConf(self):
+		# FFMPEG Path
+		global PATH_TO_FFMPEG
+		PATH_TO_FFMPEG = self.Config.get('RemIdx', 'PATH_TO_FFMPEG')
+		# Port I'm listing to
+		global LOCAL_PORT
+		LOCAL_PORT = str(self.Config.getint('RemIdx', 'LOCAL_PORT'))
+		global FFMPEG_THREADS
+		FFMPEG_THREADS = str(self.Config.get('RemIdx', 'FFMPEG_THREADS'))
+		global LOG_LEVEL
+		LOG_LEVEL = self.Config.get('RemIdx', 'LOG_LEVEL')
+
+
+	def SetConf(self, sMyDir):
+		print ''
+		print ''
+		print ''
+		print ''
+		print ''
+		print ''
+		print '***********************************************************************'
+		print '* Welcome to the RemIdx Remote Indexer version ' + VERSION
+		print '*'
+		print '* Running on ' + platform.system()
+		print '*'
+		print '* Made by dane22, a Plex community member'
+		print '*'
+		print '* This application needs to be configured first' 
+		global PATH_TO_FFMPEG
+		while not os.path.isfile(PATH_TO_FFMPEG):
+			print '*'
+			print '* Please enter the full path to the FFMPEG executable, and press <ENTER>'
+			PATH_TO_FFMPEG = raw_input('')
+		self.Config.set('RemIdx', 'PATH_TO_FFMPEG', PATH_TO_FFMPEG)
+		print '*'
+		print '* Thanks.....'
+		global LOCAL_PORT
+		while not ((LOCAL_PORT>32400) and (LOCAL_PORT<32501)):
+			print '*'
+			print '* Now please enter the port number this application shall be listnening on'
+			print '* Remember to open your firewall for this port, and I recommend port 32405'
+			print '* Valid range is 32401 to 32500'
+			LOCAL_PORT = int(raw_input(''))
+		LOCAL_PORT = str(LOCAL_PORT)
+		self.Config.set('RemIdx', 'LOCAL_PORT', LOCAL_PORT)
+		print '*'
+		print '* Thanks.....'
+		VALID_FFMPEG_THREADS = ('auto', '1', '2', '3', '4', '5', '6', '7', '8')
+		global FFMPEG_THREADS
+		while not (FFMPEG_THREADS in VALID_FFMPEG_THREADS):
+			print '*'
+			print '* Now please enter the amount of CPU cores to use (type auto to use all cores)'
+			print '* If this is a dedicated Indexer, I recommend you type auto'
+			print '* Valid options are ' + str(VALID_FFMPEG_THREADS)[1:-1]
+			FFMPEG_THREADS = raw_input('')
+		self.Config.set('RemIdx', 'FFMPEG_THREADS', FFMPEG_THREADS)
+		print '*'
+		print '* Thanks.....'
+		global LOG_LEVEL
+		VALID_LOG_LEVEL = ('none', 'debug', 'info', 'warning', 'error', 'critical')
+		while not (LOG_LEVEL in VALID_LOG_LEVEL):
+			print '*'
+			print '* Now please enter the log level to use'
+			print '* Valid levels are ' + str(VALID_LOG_LEVEL)[1:-1]
+			LOG_LEVEL = raw_input('')
+		self.Config.set('RemIdx', 'LOG_LEVEL', LOG_LEVEL)
+		# Writing our configuration file to 'example.cfg'
+		self.Config.set('Configuration', 'isset', True)
+		with open(os.path.join(sMyDir,'RemIdx.ini'), 'wb') as configfile:
+			self.Config.write(configfile)
 
 #***********************************************************************
 # Main function
 #***********************************************************************
 def main():
+	# Directory I live in
+	sMyDir = os.path.realpath(os.path.dirname(sys.argv[0]))
+	conf(sMyDir)
 	# Configure logging
 	Logging()
 	logging.info('***********************************************************************')
@@ -433,8 +519,6 @@ def main():
 		print 'Quitting'
 		logging.info('Quitting RemIdx Indexer')
 		sys.exit(1)
-	# Directory I live in
-	sMyDir = os.path.realpath(os.path.dirname(sys.argv[0]))
 	logging.debug('Starting from directory named : ' + sMyDir)
 	# Create Queue and Work Directory
 	myQDir = os.path.join(sMyDir,'Queue')

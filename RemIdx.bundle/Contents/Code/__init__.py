@@ -4,7 +4,7 @@ from lxml import etree
 import urllib2
 import urllib
 
-VERSION = ' V0.0.1.1'
+VERSION = ' V0.0.1.2'
 NAME = L('RemIdx')
 PREFIX = '/agents/remidx'
 PLUGIN_NAME = 'remidx'
@@ -24,7 +24,7 @@ def Start():
 	request.get_method = lambda: 'PUT'
 	url = opener.open(request)
 
-####################################################################################################
+###################################################################################################
 # Movie agent
 ####################################################################################################		
 class RemIdxMediaMovie(Agent.Movies):
@@ -76,7 +76,7 @@ def GetMediaInfoMovie(mediaID, myTitle):
 		if os.path.isfile(myIdxFile):
 			Log.Debug('Index exists for : %s with ID: %s, so skipping' %(myTitle, mediaID))
 		else:
-			Log.Debug('Index is missing for : %s with ID: %s' %(myTitle, mediaID))
+			Log.Debug('ID: %s - Index is missing for : %s' %(mediaID, myTitle))
 			#Get media info
 			myNewURL = myURL + '/library/metadata/' + mediaID
 			# Grap the Section ID
@@ -114,26 +114,26 @@ def GetMediaInfoTV(mediaID, myTitle):
 	#Walk each episode
 	for episode in episodes:
 		myEpisodeTitle = myTitle + ' - ' + episode.get('title')
-		Log.Debug('Complete title is %s' %(myEpisodeTitle))		
+		Log.Debug('ID: %s Complete title is %s' %(mediaID, myEpisodeTitle))		
 		mySURL = str(episode.xpath('Media/Part/@key'))[2:-2]
-		Log.Debug('Episode stream url is %s' %(mySURL))
+		Log.Debug('ID: %s Episode stream url is %s' %(mediaID, mySURL))
 		myAspectRatio = str(episode.xpath('Media/@aspectRatio'))[2:-2]
-		Log.Debug('AspectRatio is %s' %(myAspectRatio))
+		Log.Debug('ID: %s AspectRatio is %s' %(mediaID, myAspectRatio))
 		#Get episode tree
 		myKey = episode.get('ratingKey')
 		myNewURL = myURL + '/library/metadata/' + myKey + '/tree'
-		Log.Debug('Tree URL is : %s' %(myNewURL))
+		Log.Debug('ID: %s Tree URL is : %s' %(mediaID, myNewURL))
 		myTree = XML.ElementFromURL(myNewURL).xpath('//MediaPart')
 		for section in myTree:
 			myMediaHash = section.get('hash')
-			Log.Debug('The hash for media %s is %s' %(myKey, myMediaHash))
+			Log.Debug('ID: %s The hash for media %s is %s' %(mediaID, myKey, myMediaHash))
 		# Does an index already exists?
 		myIdxFile = os.path.join(Core.app_support_path, 'Media', 'localhost', myMediaHash[:1], myMediaHash[1:] + '.bundle', 'Contents', 'Indexes', 'index-sd.bif')
-		Log.Debug('myIdxFile is : ' + myIdxFile)
+		Log.Debug('ID: %s myIdxFile is : %s' %(mediaID, myIdxFile))
 		if os.path.isfile(myIdxFile):
 			Log.Debug('Index exists for : %s with ID: %s, so skipping' %(myEpisodeTitle, myKey))
 		else:
-			Log.Debug('Index is missing for : %s with ID: %s' %(myEpisodeTitle, myKey))
+			Log.Debug('ID: %s Index is missing for : %s ' %(myKey, myEpisodeTitle))
 			RegIdx(mySURL, myMediaHash, myEpisodeTitle, myKey, mySectionID, myAspectRatio)
 
 
@@ -143,7 +143,7 @@ def GetMediaInfoTV(mediaID, myTitle):
 @route(PREFIX + '/ReqIdx')
 def RegIdx(mySURL, myMediaHash, myTitle, mediaID, mySectionID, myAspectRatio):
 	myURL = 'http://' + Prefs['Remote_Idx_IP'] + ':' + Prefs['Remote_Port']+'/?Stream=http://' + Prefs['This_PMS_IP'] + ':' + Prefs['This_PMS_Port'] + mySURL + '&AspectRatio=' + myAspectRatio + '&SectionID=' + mySectionID + '&mediaID=' + mediaID + '&Title=' + String.Quote(myTitle) + '&Hash=' + myMediaHash + '.bundle'
-	print 'RemIdx is sending a request to remote Indexer for %s' %(mediaID)
+	print NAME + ' is sending a request to remote Indexer for %s' %(myTitle)
 	try:
 		HTTP.Request(myURL, None, {'X-HTTP-Method-Override': 'QUEUE'}).content()
 	except Exception:
@@ -155,6 +155,7 @@ def RegIdx(mySURL, myMediaHash, myTitle, mediaID, mySectionID, myAspectRatio):
 def Update():
 	myURL = 'http://' + Prefs['Remote_Idx_IP'] + ':' + Prefs['Remote_Port'] + '/Out'
 	try:
+		Log.Debug('Got slammed by the Indexer')
 		#Create a tmp storage directory in the Plug-In Support directory
 		if not os.path.exists('Queue'):
 			os.makedirs('Queue')

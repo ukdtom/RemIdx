@@ -16,4 +16,4 @@ Remote_Indexer/Work
 Remote_Indexer/RemIdx.log
 *test*
 RemIdx.sh
-
+*.ini

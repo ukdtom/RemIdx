@@ -1,3 +1,7 @@
+V0.0.1.2
+- Remote Indexer:
+-- Added a configuration wizard
+
 V0.0.1.1
 - Removed start files, since they where not working.
 - Updated doc with how-to start Remote Indexer
