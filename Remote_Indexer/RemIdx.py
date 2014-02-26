@@ -15,7 +15,7 @@
 
 # Search for TODO to find entry point for work in progress
 
-VERSION = '0.0.1.2'
+VERSION = '0.0.1.3'
 
 import logging
 import io, json
@@ -231,25 +231,34 @@ def GenJPGs(myDir):
 		#Create tmp directory
 		os.makedirs(os.path.join(myDir, 'Tmp'))
 		logging.debug('Started to work on bundle ' + myWList[0])
-		#Extract needed info from work bundle json file
-		with open(myWList[0]) as data_file:
-			data = json.load(data_file)
-			myHash = data["Hash"][0]
-			logging.debug('Hash value is ' + myHash)
-			myStream = data["Stream"][0]
-			logging.debug('Stream URL is ' + myStream)
-			myTitle = data["Title"][0]
-			logging.debug('Title is ' + myTitle)
-			mymediaID = data["mediaID"][0]
-			logging.debug('MediaID is ' + mymediaID)
-			mySectionID = data["SectionID"][0]
-			logging.debug('Section ID is ' + mySectionID)
-			try:
-				myAspectRatio = data["AspectRatio"][0]
-				logging.debug('myAspectRatio is ' + myAspectRatio)
-			except:
-				logging.debug('AspectRatio is missing')
-				myAspectRatio = 'empty'
+		try:
+			#Extract needed info from work bundle json file
+			with open(myWList[0]) as data_file:
+				data = json.load(data_file)
+				myHash = data["Hash"][0]
+				logging.debug('Hash value is ' + myHash)
+				myStream = data["Stream"][0]
+				logging.debug('Stream URL is ' + myStream)
+				myTitle = data["Title"][0]
+				logging.debug('Title is ' + myTitle)
+				mymediaID = data["mediaID"][0]
+				logging.debug('MediaID is ' + mymediaID)
+				mySectionID = data["SectionID"][0]
+				logging.debug('Section ID is ' + mySectionID)
+				try:
+					myAspectRatio = data["AspectRatio"][0]
+					logging.debug('myAspectRatio is ' + myAspectRatio)
+				except:
+					logging.debug('AspectRatio is missing')
+					myAspectRatio = 'empty'
+		except:
+			# Bundlefile is invalid, so let's simply delete it
+			logging.error('The bundle named %s was invalid, so deleting it' %(myWList[0]))
+			os.remove(myWList[0])
+			myTitle = '      ****** Idle, waiting for work ******'
+			ShutdownMsg(myTitle)
+			return
+
 		#Tell my Master what's going on here
 		print 'Starting to extract screenshots from %s' %myTitle
 		print 'Close the window to terminate'

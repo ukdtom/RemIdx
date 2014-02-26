@@ -4,7 +4,7 @@ from lxml import etree
 import urllib2
 import urllib
 
-VERSION = ' V0.0.1.2'
+VERSION = ' V0.0.1.3'
 NAME = L('RemIdx')
 PREFIX = '/agents/remidx'
 PLUGIN_NAME = 'remidx'
@@ -39,8 +39,6 @@ class RemIdxMediaMovie(Agent.Movies):
 	def update(self, metadata, media, lang, force):
 		#Start to work
 		GetMediaInfoMovie(media.id, media.title)
-
-
 
 ####################################################################################################
 # TV Show agent
