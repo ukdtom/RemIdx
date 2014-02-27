@@ -1,5 +1,12 @@
+v0.0.1.4
+- Remote Indexer:
+-- Process will now run as low priority to prevent from bogging down the system.
+-- Framework now to build win32 executable using PyInstaller.
+-- ffmpeg's log level can now be set in the config file.
+-- Allow default config values to be set by pressing enter.
+
 V0.0.1.3
-- Remote Indexer
+- Remote Indexer:
 -- Issue 16 fixed: Bad bundle in workdir hangs RemIdx
 
 V0.0.1.2

@@ -13,7 +13,12 @@ Remote_Indexer/Tmp
 Remote_Indexer/Out
 Remote_Indexer/Queue
 Remote_Indexer/Work
+Remote_Indexer/Build
+Remote_Indexer/dist
 Remote_Indexer/RemIdx.log
+Remote_Indexer/ffmpeg.exe
+Remote_Indexer/*.lnk
+Remote_Indexer/RemIdx.spec
 *test*
 RemIdx.sh
 *.ini

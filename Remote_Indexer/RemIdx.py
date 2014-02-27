@@ -15,7 +15,7 @@
 
 # Search for TODO to find entry point for work in progress
 
-VERSION = '0.0.1.3'
+VERSION = '0.0.1.4'
 
 import logging
 import io, json
@@ -43,6 +43,50 @@ PATH_TO_FFMPEG = ""
 LOCAL_PORT = ""
 FFMPEG_THREADS = ""
 LOG_LEVEL = ""
+
+# Enable or disable sending complete to server. Useful for devel.
+SLAM = 1
+
+# Loglevel for ffmpeg. Set empty string to load from config file. Valid values:
+#	quiet:		Show nothing at all; be silent.
+#	fatal:		Only show fatal errors. These are errors after which the process absolutely cannot continue after.
+#	error:		Show all errors, including ones which can be recovered from.
+#	warning:	Show all warnings and errors. Any message related to possibly incorrect or unexpected events will be shown.
+#	info:		Show informative messages during processing. This is in addition to warnings and errors. This is the default value.
+#	verbose:	Same as info, except more verbose.
+#	debug:		Show everything, including debugging information.
+FFMPEG_LOGLEVEL = "" 
+
+# Set process to lowest priority
+if sys.platform == 'win32':
+	# Windows method
+	import psutil
+	pid = psutil.Process(os.getpid())
+	pid.nice= psutil.IDLE_PRIORITY_CLASS
+else:
+	# Try the Linux/Mac method, keep on going if it fails.
+	try: os.nice(19)
+	except: pass
+
+# Set window size. I do this mainly so when FFMPEG_LOGLEVEL is info or higher, it will display properly.
+if sys.platform == 'win32':
+	try:
+		from ctypes import windll, byref, wintypes
+		import time
+		time.sleep(.5)
+		width = 90
+		height = 30
+		buffer_height = 200
+		hdl = windll.kernel32.GetStdHandle(-12)
+#		os.system("mode con cols=" + str(width) + " lines=" + str(height)) # Kept here for reference
+		rect = wintypes.SMALL_RECT(0, 50, 0+width-1, 50+height-1)  # (left, top, right, bottom)
+		windll.kernel32.SetConsoleWindowInfo(hdl, True, byref(rect))
+		time.sleep(.5) # Allow time for window size to change before changing buffer size.
+		bufsize = wintypes._COORD(width, buffer_height) # columns, rows
+		windll.kernel32.SetConsoleScreenBufferSize(hdl, bufsize)
+		os.system("cls")
+	# Don't panic if the above doesn't work.
+	except: pass
 
 #***********************************************************************
 # Check FFMEGP location
@@ -272,8 +316,8 @@ def GenJPGs(myDir):
 		resolution = "320x136"
 		# TODO end
 		#Starting to grap screenshots	
-	    	ffmpeg= [PATH_TO_FFMPEG, '-threads', FFMPEG_THREADS, '-loglevel', 'quiet', '-i', myStream, '-q', '3', '-s', resolution, '-r', '0.5', myDir + '/Tmp/%016d.jpg']
-	    	if subprocess.call(ffmpeg):
+		ffmpeg= [PATH_TO_FFMPEG, '-threads', FFMPEG_THREADS, '-loglevel', FFMPEG_LOGLEVEL, '-i', myStream, '-q', '3', '-s', resolution, '-r', '0.5', myDir + '/Tmp/%016d.jpg']
+		if subprocess.call(ffmpeg):
 			logging.critical('Could not extract images from video')
 			raise Exception('Could not extract images from video')
 			sys.exit(1)
@@ -400,8 +444,9 @@ def slamPMS(myStream):
 	#Sending Slam
 	request = urllib2.Request(PMSURL)
 	try:
-		response = urllib2.urlopen(request, timeout=60)
-		response.close()
+		if SLAM:
+			response = urllib2.urlopen(request, timeout=60)
+			response.close()
 	except:
 		print 'Slamming okay'
 	# Tell my Master I'm falling asleep
@@ -450,6 +495,11 @@ class conf():
 		FFMPEG_THREADS = str(self.Config.get('RemIdx', 'FFMPEG_THREADS'))
 		global LOG_LEVEL
 		LOG_LEVEL = self.Config.get('RemIdx', 'LOG_LEVEL')
+		global FFMPEG_LOGLEVEL
+		# If FFMPEG_LOGLEVEL is unset then load it from the config file.
+		if FFMPEG_LOGLEVEL == '': FFMPEG_LOGLEVEL = self.Config.get('RemIdx', 'FFMPEG_LOGLEVEL')
+		# If FFMPEG_LOGLEVEL is still unset then set a value.
+		if FFMPEG_LOGLEVEL == '': FFMPEG_LOGLEVEL = 'quiet'
 
 
 	def SetConf(self, sMyDir):
@@ -471,7 +521,7 @@ class conf():
 		while not os.path.isfile(PATH_TO_FFMPEG):
 			print '*'
 			print '* Please enter the full path to the FFMPEG executable, and press <ENTER>'
-			PATH_TO_FFMPEG = raw_input('')
+			PATH_TO_FFMPEG = raw_input('ffmpeg path: ')
 		self.Config.set('RemIdx', 'PATH_TO_FFMPEG', PATH_TO_FFMPEG)
 		print '*'
 		print '* Thanks.....'
@@ -481,7 +531,10 @@ class conf():
 			print '* Now please enter the port number this application shall be listnening on'
 			print '* Remember to open your firewall for this port, and I recommend port 32405'
 			print '* Valid range is 32401 to 32500'
-			LOCAL_PORT = int(raw_input(''))
+			LOCAL_PORT = raw_input('Remote Indexer Port [32405]: ')
+			# Allow user to set default by just pressing enter.
+			if LOCAL_PORT == '': LOCAL_PORT = 32405
+			LOCAL_PORT = int(LOCAL_PORT)
 		LOCAL_PORT = str(LOCAL_PORT)
 		self.Config.set('RemIdx', 'LOCAL_PORT', LOCAL_PORT)
 		print '*'
@@ -493,7 +546,9 @@ class conf():
 			print '* Now please enter the amount of CPU cores to use (type auto to use all cores)'
 			print '* If this is a dedicated Indexer, I recommend you type auto'
 			print '* Valid options are ' + str(VALID_FFMPEG_THREADS)[1:-1]
-			FFMPEG_THREADS = raw_input('')
+			FFMPEG_THREADS = raw_input('Number of cores [auto]: ')
+			# Allow user to set default by just pressing enter.
+			if FFMPEG_THREADS == '': FFMPEG_THREADS = 'auto'
 		self.Config.set('RemIdx', 'FFMPEG_THREADS', FFMPEG_THREADS)
 		print '*'
 		print '* Thanks.....'
@@ -503,9 +558,13 @@ class conf():
 			print '*'
 			print '* Now please enter the log level to use'
 			print '* Valid levels are ' + str(VALID_LOG_LEVEL)[1:-1]
-			LOG_LEVEL = raw_input('')
+			LOG_LEVEL = raw_input('Log Level [info]: ')
+			# Allow user to set default by just pressing enter.
+			if LOG_LEVEL == '': LOG_LEVEL = 'info'
 		self.Config.set('RemIdx', 'LOG_LEVEL', LOG_LEVEL)
-		# Writing our configuration file to 'example.cfg'
+		self.Config.set('RemIdx', 'FFMPEG_LOGLEVEL', 'quiet')
+
+		# Writing our configuration file to 'RemIdx.ini'
 		self.Config.set('Configuration', 'isset', True)
 		with open(os.path.join(sMyDir,'RemIdx.ini'), 'wb') as configfile:
 			self.Config.write(configfile)
