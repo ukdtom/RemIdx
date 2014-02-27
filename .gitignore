@@ -8,7 +8,6 @@ test/
 
 *copy)*
 *.odt#
-*.odt
 Remote_Indexer/Tmp
 Remote_Indexer/Out
 Remote_Indexer/Queue

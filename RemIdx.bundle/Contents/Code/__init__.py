@@ -4,7 +4,7 @@ from lxml import etree
 import urllib2
 import urllib
 
-VERSION = ' V0.0.1.3'
+VERSION = ' V0.0.1.4'
 NAME = L('RemIdx')
 PREFIX = '/agents/remidx'
 PLUGIN_NAME = 'remidx'
