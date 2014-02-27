@@ -5,7 +5,7 @@
 # This must be running on a remote PC if possible, to
 # avoid draining Plex Media Server for power
 #
-# Made by dane22, a Plex community member
+# Made by dane22 and srazer, Plex community members
 # http://forums.plex.tv
 #
 # Code based on https://github.com/anachirino/bifserver, and she
