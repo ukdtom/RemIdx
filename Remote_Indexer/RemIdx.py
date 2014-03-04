@@ -410,7 +410,7 @@ def ShowBanner():
 	print '*'
 	print '* Running on ' + platform.system()
 	print '*'
-	print '* Made by dane22 and srazer, a Plex community member'
+	print '* Made by dane22 and srazer, Plex community members'
 	print '*'
 	print '* To reconfigure, either edit the file named RemIdx.ini, or delete it'
 	print '*'
@@ -514,7 +514,7 @@ class conf():
 		print '*'
 		print '* Running on ' + platform.system()
 		print '*'
-		print '* Made by dane22 and srazer, a Plex community member'
+		print '* Made by dane22 and srazer, Plex community members'
 		print '*'
 		print '* This application needs to be configured first' 
 		global PATH_TO_FFMPEG
