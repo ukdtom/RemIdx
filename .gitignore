@@ -17,7 +17,7 @@ Remote_Indexer/dist
 Remote_Indexer/RemIdx.log
 Remote_Indexer/ffmpeg.exe
 Remote_Indexer/*.lnk
-Remote_Indexer/RemIdx.spec
+Remote_Indexer/*.spec
 *test*
 RemIdx.sh
 *.ini
